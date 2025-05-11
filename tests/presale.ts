@@ -19,7 +19,8 @@ describe("presale", () => {
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Presale as Program<Presale>;
-  const payer = anchor.web3.Keypair.generate();
+  // Using an existing wallet with SOL instead of generating a new one that requires airdrop
+  const payer = provider.wallet.payer;
   const authority = anchor.web3.Keypair.generate();
   const buyer = anchor.web3.Keypair.generate();
   
@@ -55,25 +56,17 @@ describe("presale", () => {
   let currentTimestamp: number;
   
   before(async () => {
-    // Airdrop SOL to the payer - increased to 20 SOL to ensure enough funds
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(payer.publicKey, 20 * LAMPORTS_PER_SOL)
-    );
-    
-    // Wait a bit to ensure the airdrop is confirmed
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Transfer SOL to authority and buyer - increased amounts
+    // Transfer SOL to authority and buyer from the payer
     const transferToAuthority = SystemProgram.transfer({
       fromPubkey: payer.publicKey,
       toPubkey: authority.publicKey,
-      lamports: 8 * LAMPORTS_PER_SOL,
+      lamports: 2 * LAMPORTS_PER_SOL,
     });
     
     const transferToBuyer = SystemProgram.transfer({
       fromPubkey: payer.publicKey,
       toPubkey: buyer.publicKey,
-      lamports: 8 * LAMPORTS_PER_SOL,
+      lamports: 12 * LAMPORTS_PER_SOL, // Increased to have enough for the purchase
     });
     
     const tx = new anchor.web3.Transaction()
@@ -147,7 +140,7 @@ describe("presale", () => {
         treasury: treasury,
         authority: authority.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID, // This will be interpreted as TokenInterface
+        tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([authority, presaleAccountKeypair])
